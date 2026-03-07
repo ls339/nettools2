@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import styles from './styles.module.css'
 
 type ScanResult = {
@@ -10,8 +10,14 @@ type ScanResult = {
     open_ports: number[]
 }
 
-export default function ScannedHostList({ initialResults }: { initialResults: ScanResult[] }) {
-    const [results, setResults] = useState<ScanResult[]>(initialResults)
+export default function ScannedHostList() {
+    const [results, setResults] = useState<ScanResult[]>([])
+
+    useEffect(() => {
+        fetch('/api/port/scanned/100')
+            .then(res => res.json())
+            .then(data => setResults(data.results))
+    }, [])
 
     async function handleDelete(taskId: string) {
         const res = await fetch(`/api/port/scanned/${taskId}`, { method: 'DELETE' })

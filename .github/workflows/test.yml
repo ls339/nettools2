@@ -1,4 +1,4 @@
-name: API Tests
+name: Tests
 
 on:
   push:
@@ -7,7 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  api-tests:
+    name: API Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -17,8 +18,35 @@ jobs:
       - name: Build API image
         run: docker build -t nettools-api -f src/api/dockerfile src/
 
-      - name: Run tests
+      - name: Run unit tests
         run: docker run --rm nettools-api python -m pytest src/api/tests/ -v
 
       - name: Run linter
         run: docker run --rm nettools-api python -m ruff check src/api src/worker
+
+  e2e-tests:
+    name: Frontend E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up --build -d
+        env:
+          MONGO_ROOT_USERNAME: root
+          MONGO_ROOT_PASSWORD: testpassword
+
+      - name: Wait for services to be ready
+        run: sleep 20
+
+      - name: Install Playwright
+        run: cd src/ui && npm ci && npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: cd src/ui && npm run test:e2e
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down
