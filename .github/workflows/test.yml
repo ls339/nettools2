@@ -1,0 +1,24 @@
+name: API Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t nettools-api -f src/api/dockerfile src/
+
+      - name: Run tests
+        run: docker run --rm nettools-api python -m pytest src/api/tests/ -v
+
+      - name: Run linter
+        run: docker run --rm nettools-api python -m ruff check src/api src/worker
