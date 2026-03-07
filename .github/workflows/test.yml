@@ -32,11 +32,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env file
+        run: |
+          echo "MONGO_ROOT_USERNAME=root" >> .env
+          echo "MONGO_ROOT_PASSWORD=testpassword" >> .env
+
       - name: Start stack
         run: docker compose up --build -d
-        env:
-          MONGO_ROOT_USERNAME: root
-          MONGO_ROOT_PASSWORD: testpassword
 
       - name: Wait for services to be ready
         run: sleep 20
