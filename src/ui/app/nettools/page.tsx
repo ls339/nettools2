@@ -16,13 +16,26 @@ async function getScannedPorts() {
 export default async function Page() {
     const scanned_hosts = await getScannedPorts()
     return (
-        <div>
-            Your IP Address:
-            <IpAddress />
-            <br></br>
-            <h1 className={styles.header}>Port Scanner</h1>
-            <PortScanForm />
-            <ScannedHostList initialResults={scanned_hosts.results} />
+        <div className={styles.page}>
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Your IP Address</h2>
+                <IpAddress />
+            </section>
+
+            <hr className={styles.divider} />
+
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Port Scanner</h2>
+                <p className={styles.sectionSubtitle}>Enter a host and port range to queue a scan.</p>
+                <PortScanForm />
+            </section>
+
+            <hr className={styles.divider} />
+
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Scan Results</h2>
+                <ScannedHostList initialResults={scanned_hosts.results} />
+            </section>
         </div>
     )
 }

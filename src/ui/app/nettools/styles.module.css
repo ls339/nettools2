@@ -1,45 +1,58 @@
+/* Layout */
 .nettools {
     padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
 }
-.hostaddress {
-    display: flex;
-    border-radius: 10px;
-    overflow: hidden;
-    width: 255px; 
-    background:  rgb(134, 240, 134); 
-    color: black;
-    border: solid;
-    justify-content: space-around;
+.page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
 }
-.openports {
-    display: flex;
-    border-radius: 10px;
-    overflow: hidden;
-    width: 255px;
-    background: rgb(134, 240, 134); 
-    color: black;
-    border: solid;
-    justify-content: space-around;
-    padding-top: 5%;
-    padding-bottom: 5%;
+.section {
+    margin-bottom: 8px;
 }
-.header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 35px;
+.sectionTitle {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
 }
+.sectionSubtitle {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 12px;
+}
+.divider {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 24px 0;
+}
+
+/* Navbar */
 .navbar {
     display: flex;
     justify-content: right;
     font-size: 14px;
 }
+
+/* IP address */
+.hostaddress {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 8px;
+    background: rgb(134, 240, 134);
+    color: black;
+    border: 1px solid #aaa;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* Scan form */
 .scanForm {
     display: flex;
     flex-direction: column;
     gap: 10px;
     max-width: 300px;
-    margin-top: 16px;
 }
 .scanInput {
     padding: 8px 12px;
@@ -54,6 +67,7 @@
     background: rgb(134, 240, 134);
     font-size: 14px;
     cursor: pointer;
+    font-weight: 500;
 }
 .scanButton:disabled {
     opacity: 0.6;
@@ -63,12 +77,67 @@
     font-size: 13px;
     color: #333;
 }
+
+/* Results grid */
+.resultGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+}
+.resultCard {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 16px;
+    background: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.resultCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.resultHost {
+    font-weight: 600;
+    font-size: 15px;
+    word-break: break-all;
+}
+.resultRange {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+}
+.resultPorts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+.portBadge {
+    background: rgb(134, 240, 134);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+.noPorts {
+    font-size: 12px;
+    color: #999;
+}
+.emptyState {
+    font-size: 13px;
+    color: #999;
+    margin-top: 8px;
+}
+
+/* Delete button */
 .deleteButton {
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 6px;
     border: none;
     background: rgb(240, 134, 134);
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
-    align-self: center;
 }

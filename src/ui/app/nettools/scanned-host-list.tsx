@@ -20,21 +20,29 @@ export default function ScannedHostList({ initialResults }: { initialResults: Sc
         }
     }
 
+    if (results.length === 0) {
+        return <p className={styles.emptyState}>No scan results yet. Submit a scan above.</p>
+    }
+
     return (
-        <div>
+        <div className={styles.resultGrid}>
             {results.map(result => (
-                <div key={result.id} className={styles.openports}>
-                    <div>
-                        <p>{result.host}</p>
-                        <p>{result.range[0]} - {result.range[1]}</p>
+                <div key={result.id} className={styles.resultCard}>
+                    <div className={styles.resultCardHeader}>
+                        <span className={styles.resultHost}>{result.host}</span>
+                        <button className={styles.deleteButton} onClick={() => handleDelete(result.id)}>
+                            Delete
+                        </button>
                     </div>
-                    <ul>
-                        open
-                        {result.open_ports.map(port => <li key={port}>{port}</li>)}
-                    </ul>
-                    <button className={styles.deleteButton} onClick={() => handleDelete(result.id)}>
-                        Delete
-                    </button>
+                    <p className={styles.resultRange}>Ports {result.range[0]} – {result.range[1]}</p>
+                    <div className={styles.resultPorts}>
+                        {result.open_ports.length === 0
+                            ? <span className={styles.noPorts}>No open ports found</span>
+                            : result.open_ports.map(port => (
+                                <span key={port} className={styles.portBadge}>{port}</span>
+                            ))
+                        }
+                    </div>
                 </div>
             ))}
         </div>
