@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 
 
 from src.worker.task.tasks import portscan
@@ -56,3 +56,11 @@ async def portscanned(id: int):
     for result in collection:
         results.append(json.loads(result["result"]))
     return {"id": id, "results": results}
+
+
+@app.delete("/port/scanned/{task_id}", responses={200: {"message": "deleted"}})
+async def delete_portscanned(task_id: str):
+    result = db[MONGO_DB_COLLECTION].delete_one({"_id": task_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Scan result not found")
+    return {"message": "deleted"}
