@@ -12,8 +12,7 @@ A microservices-based network tools application for port scanning and IP detecti
 ## Features
 
 - **IP detection** — displays the client's real IP address (detected client-side via the browser)
-- **Port scanner** — enter a host and port range to queue an async scan; results are stored in MongoDB and displayed in the UI
-  - To scan ports on your local machine from within Docker, use `host.docker.internal` as the host
+- **Port scanner** — enter a host and port range to queue an async scan; results are stored in MongoDB and displayed in the UI. To scan ports on your local machine from within Docker, use `host.docker.internal` as the host.
 
 ## Installation
 

@@ -50,7 +50,7 @@ export default async function Page() {
     const scanned_hosts = await getScannedPorts(100)
     return (
         <div>
-            Your IP Addressz:
+            Your IP Address:
             <IpAddress />
             <br></br>
             <h1 className={styles.header}>Port Scanner</h1>
