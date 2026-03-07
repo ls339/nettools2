@@ -1,0 +1,65 @@
+.nettools {
+    padding: 24px;
+}
+.hostaddress {
+    display: flex;
+    border-radius: 10px;
+    overflow: hidden;
+    width: 255px; 
+    background:  rgb(134, 240, 134); 
+    color: black;
+    border: solid;
+    justify-content: space-around;
+}
+.openports {
+    display: flex;
+    border-radius: 10px;
+    overflow: hidden;
+    width: 255px;
+    background: rgb(134, 240, 134); 
+    color: black;
+    border: solid;
+    justify-content: space-around;
+    padding-top: 5%;
+    padding-bottom: 5%;
+}
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 35px;
+}
+.navbar {
+    display: flex;
+    justify-content: right;
+    font-size: 14px;
+}
+.scanForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 300px;
+    margin-top: 16px;
+}
+.scanInput {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+.scanButton {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    background: rgb(134, 240, 134);
+    font-size: 14px;
+    cursor: pointer;
+}
+.scanButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.scanStatus {
+    font-size: 13px;
+    color: #333;
+}

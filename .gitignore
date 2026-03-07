@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Node / Next.js
+src/ui/node_modules/
+src/ui/.next/
+
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
