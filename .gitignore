@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+.ruff_cache/
 
 # Node / Next.js
 src/ui/node_modules/
