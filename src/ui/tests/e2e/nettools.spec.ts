@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
     await page.route('/api/myip', route =>
         route.fulfill({ json: { client_host: '1.2.3.4' } })
     )
-    await page.route('/api/port/scanned/100', route =>
+    await page.route('/api/port/scanned', route =>
         route.fulfill({
             json: {
                 id: 100,
@@ -76,7 +76,7 @@ test('displays scan result cards with host, port range and open ports', async ({
 // Flow 6: Refresh button reloads scan results
 test('refresh button fetches and displays updated results', async ({ page }) => {
     let callCount = 0
-    await page.route('/api/port/scanned/100', route => {
+    await page.route('/api/port/scanned', route => {
         callCount++
         if (callCount === 1) {
             route.fulfill({ json: { id: 100, results: [

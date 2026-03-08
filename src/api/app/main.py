@@ -47,15 +47,15 @@ def portscanner(host: str, port_start: int, port_end: int):
 
 
 @app.get(
-    "/port/scanned/{id}",
-    responses={200: {"id": 123, "open_ports": [1, 2, 3]}},
+    "/port/scanned",
+    responses={200: {"open_ports": [1, 2, 3]}},
 )
-async def portscanned(id: int):
+async def portscanned():
     collection = list(db[MONGO_DB_COLLECTION].find())
     results = []
     for result in collection:
         results.append(json.loads(result["result"]))
-    return {"id": id, "results": results}
+    return {"results": results}
 
 
 @app.delete("/port/scanned/{task_id}", responses={200: {"message": "deleted"}})

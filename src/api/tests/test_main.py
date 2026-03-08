@@ -57,16 +57,16 @@ def test_portscan_queues_task_and_returns_id():
     mock_portscan.delay.assert_called_once_with("localhost", 80, 90)
 
 
-# --- GET /port/scanned/{id} ---
+# --- GET /port/scanned ---
 
 
 def test_get_scanned_returns_empty_list_when_no_results():
     with patch("src.api.app.main.db") as mock_db:
         mock_db.__getitem__.return_value.find.return_value = []
-        response = client.get("/port/scanned/1")
+        response = client.get("/port/scanned")
 
     assert response.status_code == 200
-    assert response.json() == {"id": 1, "results": []}
+    assert response.json() == {"results": []}
 
 
 def test_get_scanned_returns_parsed_results():
@@ -80,7 +80,7 @@ def test_get_scanned_returns_parsed_results():
 
     with patch("src.api.app.main.db") as mock_db:
         mock_db.__getitem__.return_value.find.return_value = [mock_doc]
-        response = client.get("/port/scanned/1")
+        response = client.get("/port/scanned")
 
     assert response.status_code == 200
     assert response.json()["results"] == [stored_result]

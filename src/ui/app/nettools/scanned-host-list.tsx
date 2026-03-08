@@ -11,7 +11,7 @@ type ScanResult = {
 }
 
 async function fetchResults(): Promise<ScanResult[]> {
-    const res = await fetch('/api/port/scanned/100')
+    const res = await fetch('/api/port/scanned')
     const data = await res.json()
     return data.results
 }
