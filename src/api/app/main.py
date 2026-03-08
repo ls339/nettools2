@@ -42,6 +42,8 @@ def get_myip(request: Request):
     responses={202: {"message": "ok", "id": "somestring"}},
 )
 def portscanner(host: str, port_start: int, port_end: int):
+    if not (1 <= port_start <= 65535) or not (1 <= port_end <= 65535) or port_start > port_end:
+        raise HTTPException(status_code=422, detail="Invalid port range")
     result = portscan.delay(host, port_start, port_end)
     return {
         "message": "ok",
@@ -57,7 +59,10 @@ async def portscanned():
     collection = list(db[MONGO_DB_COLLECTION].find())
     results = []
     for result in collection:
-        results.append(json.loads(result["result"]))
+        try:
+            results.append(json.loads(result["result"]))
+        except (KeyError, json.JSONDecodeError):
+            pass
     return {"results": results}
 
 

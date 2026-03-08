@@ -57,6 +57,15 @@ def test_portscan_queues_task_and_returns_id():
     mock_portscan.delay.assert_called_once_with("localhost", 80, 90)
 
 
+def test_portscan_rejects_invalid_port_range():
+    response = client.post("/portscan/localhost?port_start=90&port_end=80")
+    assert response.status_code == 422
+
+def test_portscan_rejects_out_of_range_ports():
+    response = client.post("/portscan/localhost?port_start=0&port_end=100")
+    assert response.status_code == 422
+
+
 # --- GET /port/scanned ---
 
 
@@ -84,6 +93,18 @@ def test_get_scanned_returns_parsed_results():
 
     assert response.status_code == 200
     assert response.json()["results"] == [stored_result]
+
+
+def test_get_scanned_skips_malformed_db_entries():
+    mock_doc_bad = {"result": "not valid json {{{}"}
+    mock_doc_good = {"result": json.dumps({"id": "ok", "host": "h", "range": [80, 80], "open_ports": []})}
+
+    with patch("src.api.app.main.db") as mock_db:
+        mock_db.__getitem__.return_value.find.return_value = [mock_doc_bad, mock_doc_good]
+        response = client.get("/port/scanned")
+
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == 1
 
 
 # --- DELETE /port/scanned/{task_id} ---
