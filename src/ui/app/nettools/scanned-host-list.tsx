@@ -10,14 +10,22 @@ type ScanResult = {
     open_ports: number[]
 }
 
+async function fetchResults(): Promise<ScanResult[]> {
+    const res = await fetch('/api/port/scanned/100')
+    const data = await res.json()
+    return data.results
+}
+
 export default function ScannedHostList() {
     const [results, setResults] = useState<ScanResult[]>([])
 
     useEffect(() => {
-        fetch('/api/port/scanned/100')
-            .then(res => res.json())
-            .then(data => setResults(data.results))
+        fetchResults().then(setResults)
     }, [])
+
+    async function handleRefresh() {
+        fetchResults().then(setResults)
+    }
 
     async function handleDelete(taskId: string) {
         const res = await fetch(`/api/port/scanned/${taskId}`, { method: 'DELETE' })
@@ -26,11 +34,10 @@ export default function ScannedHostList() {
         }
     }
 
-    if (results.length === 0) {
-        return <p className={styles.emptyState}>No scan results yet. Submit a scan above.</p>
-    }
-
     return (
+        <div>
+        <button className={styles.refreshButton} onClick={handleRefresh}>Refresh</button>
+        {results.length === 0 && <p className={styles.emptyState}>No scan results yet. Submit a scan above.</p>}
         <div className={styles.resultGrid}>
             {results.map(result => (
                 <div key={result.id} className={styles.resultCard}>
@@ -51,6 +58,7 @@ export default function ScannedHostList() {
                     </div>
                 </div>
             ))}
+        </div>
         </div>
     )
 }

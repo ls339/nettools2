@@ -73,7 +73,33 @@ test('displays scan result cards with host, port range and open ports', async ({
     await expect(page.getByText('No open ports found')).toBeVisible()
 })
 
-// Flow 6: User deletes a scan result
+// Flow 6: Refresh button reloads scan results
+test('refresh button fetches and displays updated results', async ({ page }) => {
+    let callCount = 0
+    await page.route('/api/port/scanned/100', route => {
+        callCount++
+        if (callCount === 1) {
+            route.fulfill({ json: { id: 100, results: [
+                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [80] },
+            ] } })
+        } else {
+            route.fulfill({ json: { id: 100, results: [
+                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [80] },
+                { id: 'task-xyz', host: '10.0.0.1', range: [22, 22], open_ports: [22] },
+            ] } })
+        }
+    })
+
+    await page.goto('/nettools')
+    await expect(page.getByText('localhost')).toBeVisible()
+    await expect(page.getByText('10.0.0.1')).not.toBeVisible()
+
+    await page.getByRole('button', { name: 'Refresh' }).click()
+
+    await expect(page.getByText('10.0.0.1')).toBeVisible()
+})
+
+// Flow 7: User deletes a scan result
 test('removes a result card after clicking Delete', async ({ page }) => {
     await page.route('/api/port/scanned/task-abc', route =>
         route.fulfill({ json: { message: 'deleted' } })

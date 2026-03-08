@@ -141,3 +141,17 @@
     font-size: 12px;
     cursor: pointer;
 }
+
+/* Refresh button */
+.refreshButton {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 12px;
+}
+.refreshButton:hover {
+    background: #f0f0f0;
+}
