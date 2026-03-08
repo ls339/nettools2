@@ -8,7 +8,10 @@ import json
 
 API_VERSION = "v1"
 app = FastAPI(
-    title="Purenix Net Tools", description="Various networking tools.", version="0.0.1"
+    title="Purenix Net Tools",
+    description="Various networking tools.",
+    version="0.0.1",
+    root_path="/api",
 )
 
 
