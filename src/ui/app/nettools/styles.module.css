@@ -31,8 +31,28 @@
 /* Navbar */
 .navbar {
     display: flex;
-    justify-content: right;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    border-bottom: 1px solid #ddd;
     font-size: 14px;
+}
+.navBrand {
+    font-weight: 600;
+    font-size: 15px;
+}
+.navLinks {
+    display: flex;
+    gap: 16px;
+}
+.navLink {
+    color: #333;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.navLink:hover {
+    background: #f0f0f0;
 }
 
 /* IP address */

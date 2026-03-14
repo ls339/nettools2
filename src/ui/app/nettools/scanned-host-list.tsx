@@ -3,11 +3,16 @@
 import { useEffect, useState } from 'react'
 import styles from './styles.module.css'
 
+type PortEntry = {
+    port: number
+    service: string | null
+}
+
 type ScanResult = {
     id: string
     host: string
     range: [number, number]
-    open_ports: number[]
+    open_ports: PortEntry[]
 }
 
 async function fetchResults(): Promise<ScanResult[]> {
@@ -51,8 +56,10 @@ export default function ScannedHostList() {
                     <div className={styles.resultPorts}>
                         {result.open_ports.length === 0
                             ? <span className={styles.noPorts}>No open ports found</span>
-                            : result.open_ports.map(port => (
-                                <span key={port} className={styles.portBadge}>{port}</span>
+                            : result.open_ports.map(({ port, service }) => (
+                                <span key={port} className={styles.portBadge}>
+                                    {port}{service ? ` ${service}` : ''}
+                                </span>
                             ))
                         }
                     </div>

@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
             json: {
                 id: 100,
                 results: [
-                    { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [80] },
+                    { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [{ port: 80, service: 'HTTP' }] },
                     { id: 'task-def', host: '192.168.1.1', range: [443, 443], open_ports: [] },
                 ],
             },
@@ -68,7 +68,7 @@ test('displays scan result cards with host, port range and open ports', async ({
     await page.goto('/nettools')
     await expect(page.getByText('localhost')).toBeVisible()
     await expect(page.getByText('Ports 80 – 82')).toBeVisible()
-    await expect(page.getByText('80', { exact: true })).toBeVisible()
+    await expect(page.getByText('80 HTTP')).toBeVisible()
     await expect(page.getByText('192.168.1.1')).toBeVisible()
     await expect(page.getByText('No open ports found')).toBeVisible()
 })
@@ -80,12 +80,12 @@ test('refresh button fetches and displays updated results', async ({ page }) => 
         callCount++
         if (callCount === 1) {
             route.fulfill({ json: { id: 100, results: [
-                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [80] },
+                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [{ port: 80, service: 'HTTP' }] },
             ] } })
         } else {
             route.fulfill({ json: { id: 100, results: [
-                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [80] },
-                { id: 'task-xyz', host: '10.0.0.1', range: [22, 22], open_ports: [22] },
+                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [{ port: 80, service: 'HTTP' }] },
+                { id: 'task-xyz', host: '10.0.0.1', range: [22, 22], open_ports: [{ port: 22, service: 'SSH' }] },
             ] } })
         }
     })

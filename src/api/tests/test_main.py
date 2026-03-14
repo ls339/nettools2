@@ -83,7 +83,7 @@ def test_get_scanned_returns_parsed_results():
         "id": "abc-123",
         "host": "localhost",
         "range": [80, 82],
-        "open_ports": [80],
+        "open_ports": [{"port": 80, "service": "HTTP"}],
     }
     mock_doc = {"result": json.dumps(stored_result)}
 
