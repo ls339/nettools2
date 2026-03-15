@@ -29,7 +29,7 @@ test('displays the port scanner form with all inputs by default', async ({ page 
     await expect(page.getByPlaceholder('Host (e.g. 192.168.1.1)')).toBeVisible()
     await expect(page.getByPlaceholder('Port start')).toBeVisible()
     await expect(page.getByPlaceholder('Port end')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Scan' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Scan', exact: true })).toBeVisible()
 })
 
 // Flow 3: User submits the scan form and sees confirmation
@@ -42,7 +42,7 @@ test('shows task ID after successful scan submission', async ({ page }) => {
     await page.getByPlaceholder('Host (e.g. 192.168.1.1)').fill('localhost')
     await page.getByPlaceholder('Port start').fill('80')
     await page.getByPlaceholder('Port end').fill('90')
-    await page.getByRole('button', { name: 'Scan' }).click()
+    await page.getByRole('button', { name: 'Scan', exact: true }).click()
 
     await expect(page.getByText('Scan queued — task ID: new-task-123')).toBeVisible()
 })
@@ -57,7 +57,7 @@ test('shows error message when scan submission fails', async ({ page }) => {
     await page.getByPlaceholder('Host (e.g. 192.168.1.1)').fill('localhost')
     await page.getByPlaceholder('Port start').fill('80')
     await page.getByPlaceholder('Port end').fill('90')
-    await page.getByRole('button', { name: 'Scan' }).click()
+    await page.getByRole('button', { name: 'Scan', exact: true }).click()
 
     await expect(page.getByText('Error: could not submit scan request')).toBeVisible()
 })
