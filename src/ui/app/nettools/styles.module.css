@@ -162,6 +162,108 @@
     cursor: pointer;
 }
 
+/* Generic tool layout */
+.toolForm {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.toolError {
+    font-size: 13px;
+    color: #c0392b;
+    margin: 4px 0;
+}
+.toolResult {
+    margin-top: 8px;
+}
+.recordRow {
+    font-family: monospace;
+    font-size: 13px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #f4f4f4;
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+/* Ping */
+.pingStats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.pingStat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #f4f4f4;
+    border-radius: 8px;
+    padding: 10px 16px;
+    min-width: 70px;
+}
+.pingStatLabel {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.pingStatValue {
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+/* Traceroute */
+.hopTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.hopTable th {
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 1px solid #ddd;
+    font-weight: 600;
+    color: #555;
+}
+.hopTable td {
+    padding: 5px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-family: monospace;
+}
+.hopTable tr:last-child td {
+    border-bottom: none;
+}
+
+/* SSL */
+.sslTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.sslTable td {
+    padding: 5px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: top;
+}
+.sslTable tr:last-child td {
+    border-bottom: none;
+}
+.sslLabel {
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+    width: 120px;
+}
+.sansList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
 /* Refresh button */
 .refreshButton {
     padding: 6px 14px;

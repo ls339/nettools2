@@ -131,3 +131,154 @@ def test_delete_scanned_returns_404_when_not_found():
         response = client.delete("/port/scanned/nonexistent-id")
 
     assert response.status_code == 404
+
+
+# --- GET /dns/{host} ---
+
+
+def test_dns_lookup_returns_records():
+    mock_answer = MagicMock()
+    mock_answer.__iter__ = MagicMock(return_value=iter([MagicMock(__str__=lambda self: "1.2.3.4")]))
+
+    with patch("src.api.app.main.dns.resolver.resolve", return_value=mock_answer):
+        response = client.get("/dns/example.com?record_type=A")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["host"] == "example.com"
+    assert data["record_type"] == "A"
+    assert isinstance(data["records"], list)
+
+
+def test_dns_lookup_returns_404_for_nxdomain():
+    import dns.resolver as _dns_resolver
+    with patch("src.api.app.main.dns.resolver.resolve", side_effect=_dns_resolver.NXDOMAIN):
+        response = client.get("/dns/doesnotexist.invalid?record_type=A")
+    assert response.status_code == 404
+
+
+def test_dns_lookup_returns_empty_for_no_answer():
+    import dns.resolver as _dns_resolver
+    with patch("src.api.app.main.dns.resolver.resolve", side_effect=_dns_resolver.NoAnswer):
+        response = client.get("/dns/example.com?record_type=MX")
+    assert response.status_code == 200
+    assert response.json()["records"] == []
+
+
+def test_dns_lookup_rejects_invalid_record_type():
+    response = client.get("/dns/example.com?record_type=BOGUS")
+    assert response.status_code == 422
+
+
+# --- GET /ping/{host} ---
+
+
+def test_ping_returns_stats():
+    mock_proc = MagicMock()
+    mock_proc.stdout = (
+        "PING localhost (127.0.0.1): 56 data bytes\n"
+        "4 packets transmitted, 4 packets received, 0.0% packet loss\n"
+        "round-trip min/avg/max/stddev = 0.123/0.456/0.789/0.111 ms\n"
+    )
+    with patch("src.api.app.main.subprocess.run", return_value=mock_proc):
+        response = client.get("/ping/localhost")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["packets_sent"] == 4
+    assert data["packets_received"] == 4
+    assert data["packet_loss_pct"] == 0
+    assert data["rtt_avg"] == 0.456
+
+
+def test_ping_rejects_count_out_of_range():
+    response = client.get("/ping/localhost?count=0")
+    assert response.status_code == 422
+    response = client.get("/ping/localhost?count=11")
+    assert response.status_code == 422
+
+
+def test_ping_returns_408_on_timeout():
+    import subprocess
+    with patch("src.api.app.main.subprocess.run", side_effect=subprocess.TimeoutExpired("ping", 30)):
+        response = client.get("/ping/localhost")
+    assert response.status_code == 408
+
+
+# --- GET /traceroute/{host} ---
+
+
+def test_traceroute_returns_hops():
+    mock_proc = MagicMock()
+    mock_proc.stdout = (
+        "traceroute to 8.8.8.8 (8.8.8.8), 20 hops max\n"
+        " 1  gateway (192.168.1.1)  1.234 ms  1.123 ms  0.987 ms\n"
+        " 2  * * *\n"
+        " 3  8.8.8.8 (8.8.8.8)  12.345 ms  11.111 ms  10.999 ms\n"
+    )
+    with patch("src.api.app.main.subprocess.run", return_value=mock_proc):
+        response = client.get("/traceroute/8.8.8.8")
+
+    assert response.status_code == 200
+    hops = response.json()["hops"]
+    assert len(hops) == 3
+    assert hops[0]["hop"] == 1
+    assert hops[0]["ip"] == "192.168.1.1"
+    assert hops[1]["host"] is None  # * hop
+    assert hops[2]["hop"] == 3
+
+
+def test_traceroute_returns_408_on_timeout():
+    import subprocess
+    with patch("src.api.app.main.subprocess.run", side_effect=subprocess.TimeoutExpired("traceroute", 90)):
+        response = client.get("/traceroute/8.8.8.8")
+    assert response.status_code == 408
+
+
+# --- GET /ssl/{host} ---
+
+
+def test_ssl_inspect_returns_cert_info():
+    mock_cert = {
+        "subject": [[("commonName", "example.com")]],
+        "issuer": [[("organizationName", "Let's Encrypt")]],
+        "notBefore": "Jan  1 00:00:00 2025 GMT",
+        "notAfter": "Apr  1 00:00:00 2025 GMT",
+        "subjectAltName": [("DNS", "example.com"), ("DNS", "www.example.com")],
+    }
+    mock_cipher = ("TLS_AES_256_GCM_SHA384", "TLSv1.3", 256)
+    mock_ssock = MagicMock()
+    mock_ssock.getpeercert.return_value = mock_cert
+    mock_ssock.cipher.return_value = mock_cipher
+    mock_ssock.__enter__ = MagicMock(return_value=mock_ssock)
+    mock_ssock.__exit__ = MagicMock(return_value=False)
+
+    mock_sock = MagicMock()
+    mock_sock.__enter__ = MagicMock(return_value=mock_sock)
+    mock_sock.__exit__ = MagicMock(return_value=False)
+
+    mock_ctx = MagicMock()
+    mock_ctx.wrap_socket.return_value = mock_ssock
+
+    with patch("src.api.app.main.ssl.create_default_context", return_value=mock_ctx):
+        with patch("src.api.app.main.socket.create_connection", return_value=mock_sock):
+            response = client.get("/ssl/example.com")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["common_name"] == "example.com"
+    assert data["issuer"] == "Let's Encrypt"
+    assert "example.com" in data["sans"]
+    assert data["protocol"] == "TLSv1.3"
+
+
+def test_ssl_inspect_returns_408_on_timeout():
+    with patch("src.api.app.main.socket.create_connection", side_effect=TimeoutError):
+        response = client.get("/ssl/example.com")
+    assert response.status_code == 408
+
+
+def test_ssl_inspect_returns_400_on_connection_error():
+    with patch("src.api.app.main.socket.create_connection", side_effect=OSError("refused")):
+        response = client.get("/ssl/example.com")
+    assert response.status_code == 400

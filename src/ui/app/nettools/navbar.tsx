@@ -2,7 +2,11 @@ import Link from 'next/link'
 import styles from './styles.module.css'
 
 const NAV_LINKS = [
-    { href: '/nettools', label: 'Port Scanner' },
+    { href: '/nettools#port-scanner', label: 'Port Scanner' },
+    { href: '/nettools#dns-lookup', label: 'DNS' },
+    { href: '/nettools#ping', label: 'Ping' },
+    { href: '/nettools#traceroute', label: 'Traceroute' },
+    { href: '/nettools#ssl-inspector', label: 'SSL' },
 ]
 
 export function Navbar() {

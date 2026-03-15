@@ -7,4 +7,4 @@ WORKDIR /code
 #CMD ["celery", "-A", "task.tasks", "worker"]
 COPY ./ /code/src
 RUN pip install --no-cache-dir --upgrade -r /code/src/worker/requirements.txt
-CMD ["celery", "-A", "src.worker.task.tasks", "worker"]
+CMD ["celery", "-A", "src.worker.task.tasks", "worker", "-l", "info"]

@@ -114,3 +114,102 @@ test('removes a result card after clicking Delete', async ({ page }) => {
     await expect(page.getByText('localhost')).not.toBeVisible()
     await expect(page.getByText('192.168.1.1')).toBeVisible()
 })
+
+// Flow 8: DNS lookup returns records
+test('dns lookup displays records for a domain', async ({ page }) => {
+    await page.route('/api/dns/*', route =>
+        route.fulfill({ json: { host: 'example.com', record_type: 'A', records: ['93.184.216.34'] } })
+    )
+
+    await page.goto('/nettools')
+    await page.getByPlaceholder('Domain (e.g. example.com)').fill('example.com')
+    await page.getByRole('button', { name: 'Lookup' }).click()
+
+    await expect(page.getByText('93.184.216.34')).toBeVisible()
+})
+
+// Flow 9: DNS lookup shows error on failure
+test('dns lookup shows error on failed request', async ({ page }) => {
+    await page.route('/api/dns/*', route =>
+        route.fulfill({ status: 404, json: { detail: 'Domain not found' } })
+    )
+
+    await page.goto('/nettools')
+    await page.getByPlaceholder('Domain (e.g. example.com)').fill('doesnotexist.invalid')
+    await page.getByRole('button', { name: 'Lookup' }).click()
+
+    await expect(page.getByText('Domain not found')).toBeVisible()
+})
+
+// Flow 10: Ping displays RTT stats
+test('ping displays packet stats and rtt', async ({ page }) => {
+    await page.route('/api/ping/*', route =>
+        route.fulfill({
+            json: {
+                host: '8.8.8.8',
+                packets_sent: 4,
+                packets_received: 4,
+                packet_loss_pct: 0,
+                rtt_min: 1.1,
+                rtt_avg: 2.2,
+                rtt_max: 3.3,
+            },
+        })
+    )
+
+    await page.goto('/nettools')
+    await page.getByPlaceholder('Host or IP (e.g. 8.8.8.8)').first().fill('8.8.8.8')
+    await page.getByRole('button', { name: 'Ping' }).click()
+
+    await expect(page.getByText('0%')).toBeVisible()
+    await expect(page.getByText('2.2 ms')).toBeVisible()
+})
+
+// Flow 11: Traceroute displays hop table
+test('traceroute displays hop rows', async ({ page }) => {
+    await page.route('/api/traceroute/*', route =>
+        route.fulfill({
+            json: {
+                host: '8.8.8.8',
+                hops: [
+                    { hop: 1, host: 'gateway', ip: '192.168.1.1', rtt_ms: 1.2 },
+                    { hop: 2, host: null, ip: null, rtt_ms: null },
+                ],
+            },
+        })
+    )
+
+    await page.goto('/nettools')
+    await page.getByPlaceholder('Host or IP (e.g. 8.8.8.8)').last().fill('8.8.8.8')
+    await page.getByRole('button', { name: 'Traceroute' }).click()
+
+    await expect(page.getByText('192.168.1.1')).toBeVisible()
+    await expect(page.getByText('1.2 ms')).toBeVisible()
+})
+
+// Flow 12: SSL inspector displays certificate details
+test('ssl inspector displays cert info', async ({ page }) => {
+    await page.route('/api/ssl/*', route =>
+        route.fulfill({
+            json: {
+                host: 'example.com',
+                port: 443,
+                common_name: 'example.com',
+                issuer: "Let's Encrypt",
+                not_before: 'Jan  1 00:00:00 2025 GMT',
+                not_after: 'Apr  1 00:00:00 2025 GMT',
+                sans: ['example.com', 'www.example.com'],
+                cipher: 'TLS_AES_256_GCM_SHA384',
+                protocol: 'TLSv1.3',
+            },
+        })
+    )
+
+    await page.goto('/nettools')
+    await page.getByPlaceholder('Hostname (e.g. example.com)').fill('example.com')
+    await page.getByRole('button', { name: 'Inspect' }).click()
+
+    await expect(page.getByText('example.com').first()).toBeVisible()
+    await expect(page.getByText("Let's Encrypt")).toBeVisible()
+    await expect(page.getByText('TLSv1.3')).toBeVisible()
+})

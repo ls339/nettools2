@@ -2,5 +2,6 @@
 FROM python:3.12-slim
 WORKDIR /code
 COPY ./ /code/src
+RUN apt-get update && apt-get install -y --no-install-recommends iputils-ping traceroute && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir --upgrade -r /code/src/api/requirements.txt
 CMD ["fastapi", "run", "src/api/app/main.py", "--port", "5001"]

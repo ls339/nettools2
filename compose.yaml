@@ -16,6 +16,8 @@ services:
     env_file: .env
     ports:
       - 8000:5001
+    cap_add:
+      - NET_RAW
   worker:
     build:
       context: ./src
