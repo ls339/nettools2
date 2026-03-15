@@ -28,14 +28,20 @@ _HOSTNAME_RE = re.compile(
     r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?"
     r"(?:\.(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?))*\.?)$"
 )
+_ALLOW_PRIVATE_SCAN = os.getenv("ALLOW_PRIVATE_SCAN", "false").lower() == "true"
+_MAX_PORT_RANGE = 1000
 
 
 def _validate_host(host: str) -> None:
     if len(host) > 253:
         raise HTTPException(status_code=422, detail="Host too long")
     try:
-        ipaddress.ip_address(host)
-        return  # valid IP address
+        addr = ipaddress.ip_address(host)
+        if not _ALLOW_PRIVATE_SCAN and (addr.is_private or addr.is_loopback or addr.is_link_local):
+            raise HTTPException(status_code=422, detail="Private/loopback addresses are not allowed. Set ALLOW_PRIVATE_SCAN=true to enable.")
+        return
+    except HTTPException:
+        raise
     except ValueError:
         pass
     if not _HOSTNAME_RE.match(host):
@@ -64,11 +70,14 @@ app = FastAPI(
 def get_myip(request: Request):
     # Try multiple headers that proxies use to pass real client IP
     for header in ["x-forwarded-for", "x-real-ip", "cf-connecting-ip", "x-client-ip"]:
-        client_host = request.headers.get(header)
-        if client_host:
-            # X-Forwarded-For can contain multiple IPs, take the first one
-            client_host = client_host.split(",")[0].strip()
-            return {"client_host": client_host}
+        raw = request.headers.get(header)
+        if raw:
+            candidate = raw.split(",")[0].strip()
+            try:
+                ipaddress.ip_address(candidate)
+                return {"client_host": candidate}
+            except ValueError:
+                continue  # malformed header — try next or fall through
 
     # Fallback to direct client host if no proxy headers found
     return {"client_host": request.client.host}
@@ -82,6 +91,8 @@ def portscanner(host: str, port_start: int, port_end: int):
     _validate_host(host)
     if not (1 <= port_start <= 65535) or not (1 <= port_end <= 65535) or port_start > port_end:
         raise HTTPException(status_code=422, detail="Invalid port range")
+    if (port_end - port_start + 1) > _MAX_PORT_RANGE:
+        raise HTTPException(status_code=422, detail=f"Port range too large: maximum {_MAX_PORT_RANGE} ports per scan")
     result = portscan.delay(host, port_start, port_end)
     return {
         "message": "ok",

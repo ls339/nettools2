@@ -1,5 +1,6 @@
 import json
 import os
+import ssl
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -46,6 +47,14 @@ def test_myip_uses_x_real_ip_header():
     assert response.json()["client_host"] == "9.9.9.9"
 
 
+def test_myip_ignores_non_ip_x_forwarded_for_and_falls_back():
+    # Spoofed non-IP value should be discarded; falls back to direct client host
+    response = client.get("/myip", headers={"x-forwarded-for": "not-an-ip"})
+    assert response.status_code == 200
+    assert "client_host" in response.json()
+    assert response.json()["client_host"] != "not-an-ip"
+
+
 # --- POST /portscan/{host} ---
 
 
@@ -66,9 +75,30 @@ def test_portscan_rejects_invalid_port_range():
     response = client.post("/portscan/localhost?port_start=90&port_end=80")
     assert response.status_code == 422
 
+
 def test_portscan_rejects_out_of_range_ports():
     response = client.post("/portscan/localhost?port_start=0&port_end=100")
     assert response.status_code == 422
+
+
+def test_portscan_rejects_range_exceeding_max():
+    response = client.post("/portscan/localhost?port_start=1&port_end=1001")
+    assert response.status_code == 422
+
+
+def test_portscan_rejects_private_ip_by_default():
+    response = client.post("/portscan/192.168.1.1?port_start=80&port_end=80")
+    assert response.status_code == 422
+
+
+def test_portscan_allows_private_ip_when_env_set():
+    mock_result = MagicMock()
+    mock_result.id = "private-scan-id"
+    with patch("src.api.app.main._ALLOW_PRIVATE_SCAN", True):
+        with patch("src.api.app.main.portscan") as mock_portscan:
+            mock_portscan.delay.return_value = mock_result
+            response = client.post("/portscan/192.168.1.1?port_start=80&port_end=80")
+    assert response.status_code == 200
 
 
 # --- GET /port/scanned ---
