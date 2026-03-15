@@ -72,30 +72,32 @@ test('displays scan result cards with host, port range and open ports', async ({
     await expect(page.getByText('No open ports found')).toBeVisible()
 })
 
-// Flow 6: Refresh button reloads scan results
-test('refresh button fetches and displays updated results', async ({ page }) => {
-    let callCount = 0
+// Flow 6: New scan results appear automatically via polling
+test('new scan results appear automatically after submission', async ({ page }) => {
+    let scanned = false
     await page.route('/api/port/scanned', route => {
-        callCount++
-        if (callCount === 1) {
-            route.fulfill({ json: { id: 100, results: [
-                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [{ port: 80, service: 'HTTP' }] },
-            ] } })
-        } else {
-            route.fulfill({ json: { id: 100, results: [
-                { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [{ port: 80, service: 'HTTP' }] },
-                { id: 'task-xyz', host: '10.0.0.1', range: [22, 22], open_ports: [{ port: 22, service: 'SSH' }] },
-            ] } })
-        }
+        route.fulfill({ json: { id: 100, results: scanned ? [
+            { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [{ port: 80, service: 'HTTP' }] },
+            { id: 'task-xyz', host: '10.0.0.1', range: [22, 22], open_ports: [{ port: 22, service: 'SSH' }] },
+        ] : [
+            { id: 'task-abc', host: 'localhost', range: [80, 82], open_ports: [{ port: 80, service: 'HTTP' }] },
+        ] } })
+    })
+    await page.route('/api/portscan/*', route => {
+        scanned = true
+        route.fulfill({ json: { message: 'ok', id: 'task-xyz' } })
     })
 
     await page.goto('/nettools')
     await expect(page.getByText('localhost')).toBeVisible()
     await expect(page.getByText('10.0.0.1')).not.toBeVisible()
 
-    await page.getByRole('button', { name: 'Refresh' }).click()
+    await page.getByPlaceholder('Host (e.g. 192.168.1.1)').fill('10.0.0.1')
+    await page.getByPlaceholder('Port start').fill('22')
+    await page.getByPlaceholder('Port end').fill('22')
+    await page.getByRole('button', { name: 'Scan', exact: true }).click()
 
-    await expect(page.getByText('10.0.0.1')).toBeVisible()
+    await expect(page.getByText('10.0.0.1')).toBeVisible({ timeout: 10000 })
 })
 
 // Flow 7: User deletes a scan result

@@ -66,10 +66,6 @@ export default function PortScanner() {
         }
     }
 
-    async function handleRefresh() {
-        fetchResults().then(setResults)
-    }
-
     async function handleDelete(taskId: string) {
         const res = await fetch(`/api/port/scanned/${taskId}`, { method: 'DELETE' })
         if (res.ok) setResults(prev => prev.filter(r => r.id !== taskId))
@@ -122,7 +118,6 @@ export default function PortScanner() {
                         Scan Results
                         {polling && <span className={styles.pollingIndicator}>waiting for results…</span>}
                     </h3>
-                    <button className={styles.refreshButton} onClick={handleRefresh}>Refresh</button>
                 </div>
                 {results.length === 0
                     ? <p className={styles.emptyState}>No scan results yet. Submit a scan to get started.</p>
