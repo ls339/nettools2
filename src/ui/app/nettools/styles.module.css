@@ -252,6 +252,15 @@
 .sslTable tr:last-child td {
     border-bottom: none;
 }
+.sslWarning {
+    font-size: 13px;
+    color: #b7791f;
+    background: #fef3c7;
+    border: 1px solid #f6d860;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+}
 .sslLabel {
     font-weight: 600;
     color: #555;

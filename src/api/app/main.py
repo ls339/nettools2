@@ -160,20 +160,40 @@ def traceroute_host(host: str):
         raise HTTPException(status_code=500, detail="traceroute command not available")
 
 
+def _get_cert(host: str, port: int, verify: bool):
+    ctx = ssl.create_default_context() if verify else ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    if not verify:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    with socket.create_connection((host, port), timeout=10) as sock:
+        with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+            return ssock.getpeercert(binary_form=not verify), ssock.cipher(), verify
+
+
 @app.get("/ssl/{host}")
 def ssl_inspect(host: str, port: int = 443):
     try:
-        ctx = ssl.create_default_context()
-        with socket.create_connection((host, port), timeout=10) as sock:
-            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
-                cert = ssock.getpeercert()
-                cipher = ssock.cipher()
+        try:
+            raw_cert, cipher, verified = _get_cert(host, port, verify=True)
+            cert = raw_cert
+        except ssl.SSLCertVerificationError:
+            # Retry without verification so we can still inspect the cert
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            with socket.create_connection((host, port), timeout=10) as sock:
+                with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+                    cert = ssock.getpeercert()
+                    cipher = ssock.cipher()
+            verified = False
+
         subject = dict(x[0] for x in cert.get("subject", []))
         issuer = dict(x[0] for x in cert.get("issuer", []))
         sans = [v for k, v in cert.get("subjectAltName", []) if k == "DNS"]
         return {
             "host": host,
             "port": port,
+            "verified": verified,
             "common_name": subject.get("commonName"),
             "issuer": issuer.get("organizationName"),
             "not_before": cert.get("notBefore"),
@@ -182,8 +202,6 @@ def ssl_inspect(host: str, port: int = 443):
             "cipher": cipher[0] if cipher else None,
             "protocol": cipher[1] if cipher else None,
         }
-    except ssl.SSLCertVerificationError as e:
-        raise HTTPException(status_code=400, detail=f"SSL verification failed: {e}")
     except (socket.timeout, TimeoutError):
         raise HTTPException(status_code=408, detail="Connection timed out")
     except (socket.gaierror, ConnectionRefusedError, OSError) as e:

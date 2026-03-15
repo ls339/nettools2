@@ -270,6 +270,41 @@ def test_ssl_inspect_returns_cert_info():
     assert data["issuer"] == "Let's Encrypt"
     assert "example.com" in data["sans"]
     assert data["protocol"] == "TLSv1.3"
+    assert data["verified"] is True
+
+
+def test_ssl_inspect_returns_cert_for_self_signed():
+    mock_cert = {
+        "subject": [[("commonName", "self-signed.local")]],
+        "issuer": [[("organizationName", "Self")]],
+        "notBefore": "Jan  1 00:00:00 2025 GMT",
+        "notAfter": "Jan  1 00:00:00 2026 GMT",
+        "subjectAltName": [],
+    }
+    mock_cipher = ("TLS_AES_256_GCM_SHA384", "TLSv1.3", 256)
+    mock_ssock = MagicMock()
+    mock_ssock.getpeercert.return_value = mock_cert
+    mock_ssock.cipher.return_value = mock_cipher
+    mock_ssock.__enter__ = MagicMock(return_value=mock_ssock)
+    mock_ssock.__exit__ = MagicMock(return_value=False)
+
+    mock_sock = MagicMock()
+    mock_sock.__enter__ = MagicMock(return_value=mock_sock)
+    mock_sock.__exit__ = MagicMock(return_value=False)
+
+    mock_ctx = MagicMock()
+    mock_ctx.wrap_socket.return_value = mock_ssock
+
+    # First call raises verification error, second (unverified) succeeds
+    with patch("src.api.app.main.ssl.create_default_context", side_effect=ssl.SSLCertVerificationError):
+        with patch("src.api.app.main.ssl.SSLContext", return_value=mock_ctx):
+            with patch("src.api.app.main.socket.create_connection", return_value=mock_sock):
+                response = client.get("/ssl/self-signed.local")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["common_name"] == "self-signed.local"
+    assert data["verified"] is False
 
 
 def test_ssl_inspect_returns_408_on_timeout():

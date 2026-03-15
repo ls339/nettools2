@@ -6,6 +6,7 @@ import styles from './styles.module.css'
 type SslResult = {
     host: string
     port: number
+    verified: boolean
     common_name: string | null
     issuer: string | null
     not_before: string | null
@@ -68,6 +69,9 @@ export default function SslInspector() {
             {error && <p className={styles.toolError}>{error}</p>}
             {result && (
                 <div className={styles.toolResult}>
+                    {!result.verified && (
+                        <p className={styles.sslWarning}>⚠ Certificate not trusted — self-signed or unverified chain</p>
+                    )}
                     <table className={styles.sslTable}>
                         <tbody>
                             <tr><td className={styles.sslLabel}>Common Name</td><td>{result.common_name ?? '—'}</td></tr>
