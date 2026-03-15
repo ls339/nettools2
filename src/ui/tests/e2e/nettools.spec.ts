@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
-    // Mock API responses before each test
     await page.route('/api/myip', route =>
         route.fulfill({ json: { client_host: '1.2.3.4' } })
     )
@@ -18,14 +17,14 @@ test.beforeEach(async ({ page }) => {
     )
 })
 
-// Flow 1: Page loads and displays IP address
-test('displays the client IP address on load', async ({ page }) => {
+// Flow 1: IP address appears in the navbar on every page load
+test('displays the client IP address in the navbar', async ({ page }) => {
     await page.goto('/nettools')
     await expect(page.getByText('1.2.3.4')).toBeVisible()
 })
 
-// Flow 2: Scan form is labelled and present
-test('displays the port scanner form with all inputs', async ({ page }) => {
+// Flow 2: Port Scanner tab is active by default with all inputs
+test('displays the port scanner form with all inputs by default', async ({ page }) => {
     await page.goto('/nettools')
     await expect(page.getByPlaceholder('Host (e.g. 192.168.1.1)')).toBeVisible()
     await expect(page.getByPlaceholder('Port start')).toBeVisible()
@@ -63,7 +62,7 @@ test('shows error message when scan submission fails', async ({ page }) => {
     await expect(page.getByText('Error: could not submit scan request')).toBeVisible()
 })
 
-// Flow 5: Scan results are displayed correctly
+// Flow 5: Scan results are displayed in the port scanner tab
 test('displays scan result cards with host, port range and open ports', async ({ page }) => {
     await page.goto('/nettools')
     await expect(page.getByText('localhost')).toBeVisible()
@@ -115,13 +114,14 @@ test('removes a result card after clicking Delete', async ({ page }) => {
     await expect(page.getByText('192.168.1.1')).toBeVisible()
 })
 
-// Flow 8: DNS lookup returns records
+// Flow 8: DNS lookup — navigate to tab, enter domain, see records
 test('dns lookup displays records for a domain', async ({ page }) => {
     await page.route('/api/dns/*', route =>
         route.fulfill({ json: { host: 'example.com', record_type: 'A', records: ['93.184.216.34'] } })
     )
 
     await page.goto('/nettools')
+    await page.getByRole('button', { name: 'DNS' }).click()
     await page.getByPlaceholder('Domain (e.g. example.com)').fill('example.com')
     await page.getByRole('button', { name: 'Lookup' }).click()
 
@@ -135,13 +135,14 @@ test('dns lookup shows error on failed request', async ({ page }) => {
     )
 
     await page.goto('/nettools')
+    await page.getByRole('button', { name: 'DNS' }).click()
     await page.getByPlaceholder('Domain (e.g. example.com)').fill('doesnotexist.invalid')
     await page.getByRole('button', { name: 'Lookup' }).click()
 
     await expect(page.getByText('Domain not found')).toBeVisible()
 })
 
-// Flow 10: Ping displays RTT stats
+// Flow 10: Ping tab — displays packet stats and RTT
 test('ping displays packet stats and rtt', async ({ page }) => {
     await page.route('/api/ping/*', route =>
         route.fulfill({
@@ -158,14 +159,15 @@ test('ping displays packet stats and rtt', async ({ page }) => {
     )
 
     await page.goto('/nettools')
-    await page.getByPlaceholder('Host or IP (e.g. 8.8.8.8)').first().fill('8.8.8.8')
     await page.getByRole('button', { name: 'Ping' }).click()
+    await page.getByPlaceholder('Host or IP (e.g. 8.8.8.8)').fill('8.8.8.8')
+    await page.getByRole('button', { name: 'Ping' }).last().click()
 
     await expect(page.getByText('0%')).toBeVisible()
     await expect(page.getByText('2.2 ms')).toBeVisible()
 })
 
-// Flow 11: Traceroute displays hop table
+// Flow 11: Traceroute tab — displays hop table
 test('traceroute displays hop rows', async ({ page }) => {
     await page.route('/api/traceroute/*', route =>
         route.fulfill({
@@ -180,20 +182,22 @@ test('traceroute displays hop rows', async ({ page }) => {
     )
 
     await page.goto('/nettools')
-    await page.getByPlaceholder('Host or IP (e.g. 8.8.8.8)').last().fill('8.8.8.8')
     await page.getByRole('button', { name: 'Traceroute' }).click()
+    await page.getByPlaceholder('Host or IP (e.g. 8.8.8.8)').fill('8.8.8.8')
+    await page.getByRole('button', { name: 'Traceroute' }).last().click()
 
     await expect(page.getByText('192.168.1.1')).toBeVisible()
     await expect(page.getByText('1.2 ms')).toBeVisible()
 })
 
-// Flow 12: SSL inspector displays certificate details
+// Flow 12: SSL tab — displays certificate details
 test('ssl inspector displays cert info', async ({ page }) => {
     await page.route('/api/ssl/*', route =>
         route.fulfill({
             json: {
                 host: 'example.com',
                 port: 443,
+                verified: true,
                 common_name: 'example.com',
                 issuer: "Let's Encrypt",
                 not_before: 'Jan  1 00:00:00 2025 GMT',
@@ -206,6 +210,7 @@ test('ssl inspector displays cert info', async ({ page }) => {
     )
 
     await page.goto('/nettools')
+    await page.getByRole('button', { name: 'SSL / TLS' }).click()
     await page.getByPlaceholder('Hostname (e.g. example.com)').fill('example.com')
     await page.getByRole('button', { name: 'Inspect' }).click()
 

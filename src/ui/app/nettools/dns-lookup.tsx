@@ -32,38 +32,45 @@ export default function DnsLookup() {
     }
 
     return (
-        <div>
-            <form onSubmit={handleSubmit} className={styles.toolForm}>
-                <input
-                    className={styles.scanInput}
-                    type="text"
-                    placeholder="Domain (e.g. example.com)"
-                    value={host}
-                    onChange={e => setHost(e.target.value)}
-                    required
-                />
-                <select
-                    className={styles.scanInput}
-                    value={recordType}
-                    onChange={e => setRecordType(e.target.value)}
-                >
-                    {RECORD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                <button className={styles.scanButton} type="submit" disabled={loading}>
-                    {loading ? 'Looking up...' : 'Lookup'}
-                </button>
-            </form>
-            {error && <p className={styles.toolError}>{error}</p>}
-            {result && (
-                <div className={styles.toolResult}>
-                    {result.records.length === 0
-                        ? <span className={styles.noPorts}>No records found</span>
-                        : result.records.map((r, i) => (
-                            <div key={i} className={styles.recordRow}>{r}</div>
-                        ))
-                    }
-                </div>
-            )}
+        <div className={styles.toolLayout}>
+            <div className={styles.toolLeft}>
+                <h2 className={styles.toolTitle}>DNS Lookup</h2>
+                <p className={styles.toolSubtitle}>Query DNS records for a domain.</p>
+                <form onSubmit={handleSubmit} className={styles.scanForm}>
+                    <input
+                        className={styles.scanInput}
+                        type="text"
+                        placeholder="Domain (e.g. example.com)"
+                        value={host}
+                        onChange={e => setHost(e.target.value)}
+                        required
+                    />
+                    <select
+                        className={styles.scanInput}
+                        value={recordType}
+                        onChange={e => setRecordType(e.target.value)}
+                    >
+                        {RECORD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <button className={styles.scanButton} type="submit" disabled={loading}>
+                        {loading ? 'Looking up...' : 'Lookup'}
+                    </button>
+                </form>
+            </div>
+
+            <div className={styles.toolRight}>
+                {error && <p className={styles.toolError}>{error}</p>}
+                {result && (
+                    <div className={styles.toolResult}>
+                        {result.records.length === 0
+                            ? <span className={styles.noPorts}>No records found</span>
+                            : result.records.map((r, i) => (
+                                <div key={i} className={styles.recordRow}>{r}</div>
+                            ))
+                        }
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

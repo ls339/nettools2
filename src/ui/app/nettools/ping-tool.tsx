@@ -39,53 +39,60 @@ export default function PingTool() {
     }
 
     return (
-        <div>
-            <form onSubmit={handleSubmit} className={styles.toolForm}>
-                <input
-                    className={styles.scanInput}
-                    type="text"
-                    placeholder="Host or IP (e.g. 8.8.8.8)"
-                    value={host}
-                    onChange={e => setHost(e.target.value)}
-                    required
-                />
-                <button className={styles.scanButton} type="submit" disabled={loading}>
-                    {loading ? 'Pinging...' : 'Ping'}
-                </button>
-            </form>
-            {error && <p className={styles.toolError}>{error}</p>}
-            {result && (
-                <div className={styles.toolResult}>
-                    <div className={styles.pingStats}>
-                        <div className={styles.pingStat}>
-                            <span className={styles.pingStatLabel}>Sent</span>
-                            <span className={styles.pingStatValue}>{result.packets_sent}</span>
-                        </div>
-                        <div className={styles.pingStat}>
-                            <span className={styles.pingStatLabel}>Received</span>
-                            <span className={styles.pingStatValue}>{result.packets_received}</span>
-                        </div>
-                        <div className={styles.pingStat}>
-                            <span className={styles.pingStatLabel}>Loss</span>
-                            <span className={styles.pingStatValue}>{result.packet_loss_pct}%</span>
-                        </div>
-                        {result.rtt_avg !== null && <>
+        <div className={styles.toolLayout}>
+            <div className={styles.toolLeft}>
+                <h2 className={styles.toolTitle}>Ping</h2>
+                <p className={styles.toolSubtitle}>Send ICMP echo requests and measure round-trip time.</p>
+                <form onSubmit={handleSubmit} className={styles.scanForm}>
+                    <input
+                        className={styles.scanInput}
+                        type="text"
+                        placeholder="Host or IP (e.g. 8.8.8.8)"
+                        value={host}
+                        onChange={e => setHost(e.target.value)}
+                        required
+                    />
+                    <button className={styles.scanButton} type="submit" disabled={loading}>
+                        {loading ? 'Pinging...' : 'Ping'}
+                    </button>
+                </form>
+            </div>
+
+            <div className={styles.toolRight}>
+                {error && <p className={styles.toolError}>{error}</p>}
+                {result && (
+                    <div className={styles.toolResult}>
+                        <div className={styles.pingStats}>
                             <div className={styles.pingStat}>
-                                <span className={styles.pingStatLabel}>Min</span>
-                                <span className={styles.pingStatValue}>{result.rtt_min} ms</span>
+                                <span className={styles.pingStatLabel}>Sent</span>
+                                <span className={styles.pingStatValue}>{result.packets_sent}</span>
                             </div>
                             <div className={styles.pingStat}>
-                                <span className={styles.pingStatLabel}>Avg</span>
-                                <span className={styles.pingStatValue}>{result.rtt_avg} ms</span>
+                                <span className={styles.pingStatLabel}>Received</span>
+                                <span className={styles.pingStatValue}>{result.packets_received}</span>
                             </div>
                             <div className={styles.pingStat}>
-                                <span className={styles.pingStatLabel}>Max</span>
-                                <span className={styles.pingStatValue}>{result.rtt_max} ms</span>
+                                <span className={styles.pingStatLabel}>Loss</span>
+                                <span className={styles.pingStatValue}>{result.packet_loss_pct}%</span>
                             </div>
-                        </>}
+                            {result.rtt_avg !== null && <>
+                                <div className={styles.pingStat}>
+                                    <span className={styles.pingStatLabel}>Min</span>
+                                    <span className={styles.pingStatValue}>{result.rtt_min} ms</span>
+                                </div>
+                                <div className={styles.pingStat}>
+                                    <span className={styles.pingStatLabel}>Avg</span>
+                                    <span className={styles.pingStatValue}>{result.rtt_avg} ms</span>
+                                </div>
+                                <div className={styles.pingStat}>
+                                    <span className={styles.pingStatLabel}>Max</span>
+                                    <span className={styles.pingStatValue}>{result.rtt_max} ms</span>
+                                </div>
+                            </>}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     )
 }
