@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import styles from './styles.module.css'
 
 type PortEntry = { port: number; service: string | null }
@@ -19,10 +19,30 @@ export default function PortScanner() {
     const [status, setStatus] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [results, setResults] = useState<ScanResult[]>([])
+    const [polling, setPolling] = useState(false)
+    const pendingIds = useRef<Set<string>>(new Set())
+    const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useEffect(() => {
         fetchResults().then(setResults)
+        return () => { if (pollTimer.current) clearTimeout(pollTimer.current) }
     }, [])
+
+    function schedulePoll() {
+        pollTimer.current = setTimeout(async () => {
+            const latest = await fetchResults()
+            setResults(latest)
+            const latestIds = new Set(latest.map(r => r.id))
+            for (const id of pendingIds.current) {
+                if (latestIds.has(id)) pendingIds.current.delete(id)
+            }
+            if (pendingIds.current.size > 0) {
+                schedulePoll()
+            } else {
+                setPolling(false)
+            }
+        }, 2000)
+    }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -36,6 +56,9 @@ export default function PortScanner() {
             if (!res.ok) throw new Error('Scan request failed')
             const data = await res.json()
             setStatus(`Scan queued — task ID: ${data.id}`)
+            pendingIds.current.add(data.id)
+            setPolling(true)
+            schedulePoll()
         } catch {
             setStatus('Error: could not submit scan request')
         } finally {
@@ -95,7 +118,10 @@ export default function PortScanner() {
 
             <div className={styles.toolRight}>
                 <div className={styles.resultsHeader}>
-                    <h3 className={styles.resultsTitle}>Scan Results</h3>
+                    <h3 className={styles.resultsTitle}>
+                        Scan Results
+                        {polling && <span className={styles.pollingIndicator}>waiting for results…</span>}
+                    </h3>
                     <button className={styles.refreshButton} onClick={handleRefresh}>Refresh</button>
                 </div>
                 {results.length === 0
