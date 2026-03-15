@@ -1,6 +1,11 @@
 import json
+import os
 import sys
 from unittest.mock import MagicMock, patch
+
+# Provide required env vars before importing the app
+os.environ.setdefault("MONGO_ROOT_USERNAME", "root")
+os.environ.setdefault("MONGO_ROOT_PASSWORD", "testpassword")
 
 # Mock the worker module before importing the app to avoid Celery broker connection
 sys.modules.setdefault("src.worker", MagicMock())
@@ -317,3 +322,58 @@ def test_ssl_inspect_returns_400_on_connection_error():
     with patch("src.api.app.main.socket.create_connection", side_effect=OSError("refused")):
         response = client.get("/ssl/example.com")
     assert response.status_code == 400
+
+
+# --- Host validation ---
+
+
+def test_invalid_host_rejected_in_ping():
+    response = client.get("/ping/-invalid-flag")
+    assert response.status_code == 422
+
+
+def test_invalid_host_rejected_in_traceroute():
+    response = client.get("/traceroute/not_a_valid_host!")
+    assert response.status_code == 422
+
+
+def test_invalid_host_rejected_in_dns():
+    response = client.get("/dns/not_valid!")
+    assert response.status_code == 422
+
+
+def test_valid_ip_accepted_in_ping():
+    mock_proc = MagicMock()
+    mock_proc.stdout = "4 packets transmitted, 4 packets received\nmin/avg/max = 1.0/2.0/3.0 ms\n"
+    with patch("src.api.app.main.subprocess.run", return_value=mock_proc):
+        response = client.get("/ping/8.8.8.8")
+    assert response.status_code == 200
+
+
+def test_valid_hostname_accepted_in_dns():
+    mock_answer = MagicMock()
+    mock_answer.__iter__ = MagicMock(return_value=iter([MagicMock(__str__=lambda self: "1.2.3.4")]))
+    with patch("src.api.app.main.dns.resolver.resolve", return_value=mock_answer):
+        response = client.get("/dns/example.com")
+    assert response.status_code == 200
+
+
+# --- API key auth ---
+
+
+def test_api_key_not_required_when_env_not_set():
+    with patch.dict("src.api.app.main.__dict__", {"_API_KEY": None}):
+        response = client.get("/myip")
+    assert response.status_code == 200
+
+
+def test_api_key_enforced_when_env_set():
+    with patch("src.api.app.main._API_KEY", "secret-key"):
+        response = client.get("/myip")
+        assert response.status_code == 403
+
+        response = client.get("/myip", headers={"X-API-Key": "wrong-key"})
+        assert response.status_code == 403
+
+        response = client.get("/myip", headers={"X-API-Key": "secret-key"})
+        assert response.status_code == 200

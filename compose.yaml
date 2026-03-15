@@ -4,6 +4,9 @@ services:
     image: rabbitmq:management-alpine
     ports:
       - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
   mongodb:
     image: mongo
     environment:

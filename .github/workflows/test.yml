@@ -35,7 +35,9 @@ jobs:
       - name: Create .env file
         run: |
           echo "MONGO_ROOT_USERNAME=root" >> .env
-          echo "MONGO_ROOT_PASSWORD=testpassword" >> .env
+          echo "MONGO_ROOT_PASSWORD=${{ secrets.MONGO_ROOT_PASSWORD || 'ci-test-password' }}" >> .env
+          echo "RABBITMQ_USER=guest" >> .env
+          echo "RABBITMQ_PASSWORD=guest" >> .env
 
       - name: Start stack
         run: docker compose up --build -d

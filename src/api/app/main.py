@@ -1,14 +1,45 @@
+import ipaddress
 import json
+import os
 import re
 import socket
 import ssl
 import subprocess
 
 import dns.resolver
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
+from fastapi.security.api_key import APIKeyHeader
 
 from src.worker.task.tasks import portscan
 from .db import db, MONGO_DB_COLLECTION
+
+# --- API key auth (optional — only enforced when API_KEY env var is set) ---
+_API_KEY = os.getenv("API_KEY")
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def _verify_api_key(api_key: str = Security(_api_key_header)):
+    if _API_KEY and api_key != _API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+
+# --- Host validation ---
+_HOSTNAME_RE = re.compile(
+    r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?"
+    r"(?:\.(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?))*\.?)$"
+)
+
+
+def _validate_host(host: str) -> None:
+    if len(host) > 253:
+        raise HTTPException(status_code=422, detail="Host too long")
+    try:
+        ipaddress.ip_address(host)
+        return  # valid IP address
+    except ValueError:
+        pass
+    if not _HOSTNAME_RE.match(host):
+        raise HTTPException(status_code=422, detail="Invalid host: must be a valid hostname or IP address")
 
 
 API_VERSION = "v1"
@@ -17,6 +48,7 @@ app = FastAPI(
     description="Various networking tools.",
     version="0.0.1",
     root_path="/api",
+    dependencies=[Depends(_verify_api_key)],
 )
 
 
@@ -47,6 +79,7 @@ def get_myip(request: Request):
     responses={202: {"message": "ok", "id": "somestring"}},
 )
 def portscanner(host: str, port_start: int, port_end: int):
+    _validate_host(host)
     if not (1 <= port_start <= 65535) or not (1 <= port_end <= 65535) or port_start > port_end:
         raise HTTPException(status_code=422, detail="Invalid port range")
     result = portscan.delay(host, port_start, port_end)
@@ -84,6 +117,7 @@ VALID_RECORD_TYPES = {"A", "AAAA", "MX", "TXT", "CNAME", "NS", "PTR", "SOA"}
 
 @app.get("/dns/{host}")
 def dns_lookup(host: str, record_type: str = "A"):
+    _validate_host(host)
     if record_type.upper() not in VALID_RECORD_TYPES:
         raise HTTPException(status_code=422, detail=f"Invalid record type. Valid types: {', '.join(sorted(VALID_RECORD_TYPES))}")
     try:
@@ -101,6 +135,7 @@ def dns_lookup(host: str, record_type: str = "A"):
 
 @app.get("/ping/{host}")
 def ping_host(host: str, count: int = 4):
+    _validate_host(host)
     if not (1 <= count <= 10):
         raise HTTPException(status_code=422, detail="Count must be between 1 and 10")
     try:
@@ -129,6 +164,7 @@ def ping_host(host: str, count: int = 4):
 
 @app.get("/traceroute/{host}")
 def traceroute_host(host: str):
+    _validate_host(host)
     try:
         result = subprocess.run(
             ["traceroute", "-m", "20", "-w", "2", host],
@@ -172,6 +208,7 @@ def _get_cert(host: str, port: int, verify: bool):
 
 @app.get("/ssl/{host}")
 def ssl_inspect(host: str, port: int = 443):
+    _validate_host(host)
     try:
         try:
             raw_cert, cipher, verified = _get_cert(host, port, verify=True)
