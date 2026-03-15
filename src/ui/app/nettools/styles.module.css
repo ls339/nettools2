@@ -41,51 +41,65 @@
 }
 .tabBar {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     padding: 0 20px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 2px solid #e0e0e0;
     background: #fafafa;
     flex-wrap: wrap;
+    gap: 0;
 }
+/* Each group: divider + column of (label above, tabs below) */
 .tabGroup {
     display: flex;
-    align-items: center;
-    gap: 2px;
+    align-items: flex-end;
 }
 .tabGroupDivider {
     width: 1px;
-    height: 20px;
-    background: #ddd;
-    margin: 0 10px;
+    height: 36px;
+    background: #e0e0e0;
+    margin: 0 4px 0 4px;
+    align-self: center;
+}
+/* The stacked column: label sits above the row of tabs */
+.tabGroupInner {
+    display: flex;
+    flex-direction: column;
+    padding: 0 4px;
 }
 .tabGroupLabel {
     font-size: 10px;
-    color: #bbb;
+    color: #aaa;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
-    padding: 0 6px;
-    white-space: nowrap;
+    letter-spacing: 0.08em;
+    padding: 8px 6px 2px;
+    user-select: none;
+    pointer-events: none;
+}
+.tabGroupTabs {
+    display: flex;
+    gap: 2px;
 }
 .tab {
-    padding: 10px 14px;
+    padding: 8px 14px;
     border: none;
     background: none;
     cursor: pointer;
     font-size: 14px;
     color: #555;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
     border-radius: 4px 4px 0 0;
     white-space: nowrap;
 }
 .tab:hover {
     color: #111;
-    background: #f0f0f0;
+    background: #efefef;
 }
 .tabActive {
     color: #111;
     font-weight: 600;
     border-bottom-color: rgb(80, 200, 80);
+    background: #fff;
 }
 
 /* Tool content area */

@@ -42,16 +42,20 @@ export default function Page() {
                 {TAB_GROUPS.map((group, gi) => (
                     <div key={group.label} className={styles.tabGroup}>
                         {gi > 0 && <div className={styles.tabGroupDivider} />}
-                        <span className={styles.tabGroupLabel}>{group.label}</span>
-                        {group.tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                                onClick={() => setActiveTab(tab.id)}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
+                        <div className={styles.tabGroupInner}>
+                            <span className={styles.tabGroupLabel}>{group.label}</span>
+                            <div className={styles.tabGroupTabs}>
+                                {group.tabs.map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                                        onClick={() => setActiveTab(tab.id)}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 ))}
             </div>
