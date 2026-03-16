@@ -5,6 +5,9 @@ import re
 import socket
 import ssl
 import subprocess
+import threading
+import time
+from collections import defaultdict, deque
 
 import dns.resolver
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
@@ -21,6 +24,28 @@ _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 def _verify_api_key(api_key: str = Security(_api_key_header)):
     if _API_KEY and api_key != _API_KEY:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+
+# --- Rate limiting (sliding window, per IP per endpoint) ---
+_rate_store: dict[str, deque] = defaultdict(deque)
+_rate_lock = threading.Lock()
+
+
+class RateLimiter:
+    def __init__(self, max_calls: int, window_seconds: int = 60):
+        self.max_calls = max_calls
+        self.window_seconds = window_seconds
+
+    def __call__(self, request: Request) -> None:
+        key = f"{request.url.path}:{request.client.host}"
+        now = time.monotonic()
+        with _rate_lock:
+            calls = _rate_store[key]
+            while calls and calls[0] < now - self.window_seconds:
+                calls.popleft()
+            if len(calls) >= self.max_calls:
+                raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+            calls.append(now)
 
 
 # --- Host validation ---
@@ -86,6 +111,7 @@ def get_myip(request: Request):
 @app.post(
     "/portscan/{host}",
     responses={202: {"message": "ok", "id": "somestring"}},
+    dependencies=[Depends(RateLimiter(max_calls=5))],
 )
 def portscanner(host: str, port_start: int, port_end: int):
     _validate_host(host)
@@ -100,12 +126,17 @@ def portscanner(host: str, port_start: int, port_end: int):
     }
 
 
+_MAX_RESULTS = 500
+
+
 @app.get(
     "/port/scanned",
     responses={200: {"open_ports": [1, 2, 3]}},
 )
-async def portscanned():
-    collection = list(db[MONGO_DB_COLLECTION].find())
+async def portscanned(limit: int = 100):
+    if not (1 <= limit <= _MAX_RESULTS):
+        raise HTTPException(status_code=422, detail=f"limit must be between 1 and {_MAX_RESULTS}")
+    collection = list(db[MONGO_DB_COLLECTION].find().limit(limit))
     results = []
     for result in collection:
         try:
@@ -126,7 +157,7 @@ async def delete_portscanned(task_id: str):
 VALID_RECORD_TYPES = {"A", "AAAA", "MX", "TXT", "CNAME", "NS", "PTR", "SOA"}
 
 
-@app.get("/dns/{host}")
+@app.get("/dns/{host}", dependencies=[Depends(RateLimiter(max_calls=30))])
 def dns_lookup(host: str, record_type: str = "A"):
     _validate_host(host)
     if record_type.upper() not in VALID_RECORD_TYPES:
@@ -140,11 +171,11 @@ def dns_lookup(host: str, record_type: str = "A"):
         return {"host": host, "record_type": record_type.upper(), "records": []}
     except dns.resolver.Timeout:
         raise HTTPException(status_code=408, detail="DNS query timed out")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=400, detail="DNS lookup failed")
 
 
-@app.get("/ping/{host}")
+@app.get("/ping/{host}", dependencies=[Depends(RateLimiter(max_calls=10))])
 def ping_host(host: str, count: int = 4):
     _validate_host(host)
     if not (1 <= count <= 10):
@@ -173,7 +204,7 @@ def ping_host(host: str, count: int = 4):
         raise HTTPException(status_code=500, detail="ping command not available")
 
 
-@app.get("/traceroute/{host}")
+@app.get("/traceroute/{host}", dependencies=[Depends(RateLimiter(max_calls=5))])
 def traceroute_host(host: str):
     _validate_host(host)
     try:
@@ -217,9 +248,11 @@ def _get_cert(host: str, port: int, verify: bool):
             return ssock.getpeercert(binary_form=not verify), ssock.cipher(), verify
 
 
-@app.get("/ssl/{host}")
+@app.get("/ssl/{host}", dependencies=[Depends(RateLimiter(max_calls=10))])
 def ssl_inspect(host: str, port: int = 443):
     _validate_host(host)
+    if not (1 <= port <= 65535):
+        raise HTTPException(status_code=422, detail="Port must be between 1 and 65535")
     try:
         try:
             raw_cert, cipher, verified = _get_cert(host, port, verify=True)
@@ -252,5 +285,5 @@ def ssl_inspect(host: str, port: int = 443):
         }
     except (socket.timeout, TimeoutError):
         raise HTTPException(status_code=408, detail="Connection timed out")
-    except (socket.gaierror, ConnectionRefusedError, OSError) as e:
-        raise HTTPException(status_code=400, detail=f"Connection error: {e}")
+    except (socket.gaierror, ConnectionRefusedError, OSError):
+        raise HTTPException(status_code=400, detail="Connection failed")

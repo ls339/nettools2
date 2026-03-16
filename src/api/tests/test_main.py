@@ -4,6 +4,8 @@ import ssl
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Provide required env vars before importing the app
 os.environ.setdefault("MONGO_ROOT_USERNAME", "root")
 os.environ.setdefault("MONGO_ROOT_PASSWORD", "testpassword")
@@ -18,6 +20,14 @@ from fastapi.testclient import TestClient  # noqa: E402
 from src.api.app.main import app  # noqa: E402
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def clear_rate_store():
+    from src.api.app.main import _rate_store
+    _rate_store.clear()
+    yield
+    _rate_store.clear()
 
 
 # --- GET /myip ---
@@ -106,7 +116,7 @@ def test_portscan_allows_private_ip_when_env_set():
 
 def test_get_scanned_returns_empty_list_when_no_results():
     with patch("src.api.app.main.db") as mock_db:
-        mock_db.__getitem__.return_value.find.return_value = []
+        mock_db.__getitem__.return_value.find.return_value.limit.return_value = []
         response = client.get("/port/scanned")
 
     assert response.status_code == 200
@@ -123,7 +133,7 @@ def test_get_scanned_returns_parsed_results():
     mock_doc = {"result": json.dumps(stored_result)}
 
     with patch("src.api.app.main.db") as mock_db:
-        mock_db.__getitem__.return_value.find.return_value = [mock_doc]
+        mock_db.__getitem__.return_value.find.return_value.limit.return_value = [mock_doc]
         response = client.get("/port/scanned")
 
     assert response.status_code == 200
@@ -135,7 +145,7 @@ def test_get_scanned_skips_malformed_db_entries():
     mock_doc_good = {"result": json.dumps({"id": "ok", "host": "h", "range": [80, 80], "open_ports": []})}
 
     with patch("src.api.app.main.db") as mock_db:
-        mock_db.__getitem__.return_value.find.return_value = [mock_doc_bad, mock_doc_good]
+        mock_db.__getitem__.return_value.find.return_value.limit.return_value = [mock_doc_bad, mock_doc_good]
         response = client.get("/port/scanned")
 
     assert response.status_code == 200
@@ -352,6 +362,64 @@ def test_ssl_inspect_returns_400_on_connection_error():
     with patch("src.api.app.main.socket.create_connection", side_effect=OSError("refused")):
         response = client.get("/ssl/example.com")
     assert response.status_code == 400
+
+
+def test_ssl_inspect_rejects_invalid_port():
+    response = client.get("/ssl/example.com?port=0")
+    assert response.status_code == 422
+    response = client.get("/ssl/example.com?port=65536")
+    assert response.status_code == 422
+
+
+def test_ssl_inspect_400_does_not_leak_internal_error():
+    with patch("src.api.app.main.socket.create_connection", side_effect=OSError("internal detail")):
+        response = client.get("/ssl/example.com")
+    assert response.status_code == 400
+    assert "internal detail" not in response.json()["detail"]
+
+
+def test_dns_400_does_not_leak_internal_error():
+    with patch("src.api.app.main.dns.resolver.resolve", side_effect=Exception("internal detail")):
+        response = client.get("/dns/example.com")
+    assert response.status_code == 400
+    assert "internal detail" not in response.json()["detail"]
+
+
+# --- Rate limiting ---
+
+
+def test_rate_limit_returns_429_after_limit_exceeded():
+    from src.api.app.main import _rate_store
+    _rate_store.clear()
+
+    mock_proc = MagicMock()
+    mock_proc.stdout = "4 packets transmitted, 4 packets received\nmin/avg/max = 1.0/2.0/3.0 ms\n"
+
+    with patch("src.api.app.main.subprocess.run", return_value=mock_proc):
+        for _ in range(10):
+            client.get("/ping/8.8.8.8")
+        response = client.get("/ping/8.8.8.8")
+
+    assert response.status_code == 429
+
+
+# --- Pagination ---
+
+
+def test_get_scanned_respects_limit():
+    docs = [{"result": json.dumps({"id": str(i), "host": "h", "range": [80, 80], "open_ports": []})} for i in range(5)]
+    with patch("src.api.app.main.db") as mock_db:
+        mock_db.__getitem__.return_value.find.return_value.limit.return_value = docs[:2]
+        response = client.get("/port/scanned?limit=2")
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == 2
+
+
+def test_get_scanned_rejects_invalid_limit():
+    response = client.get("/port/scanned?limit=0")
+    assert response.status_code == 422
+    response = client.get("/port/scanned?limit=501")
+    assert response.status_code == 422
 
 
 # --- Host validation ---
