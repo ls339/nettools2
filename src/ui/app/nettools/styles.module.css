@@ -369,6 +369,105 @@
     gap: 4px;
 }
 
+/* TCP Listener */
+.stopButton {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    background: rgb(240, 134, 134);
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.stopButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.listenerHint {
+    font-size: 13px;
+    color: #555;
+    margin: 8px 0 0 0;
+}
+.listenerAddr {
+    font-family: monospace;
+    font-size: 13px;
+    background: #f0f0f0;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+.listenerStatusBar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.statusListening {
+    background: rgb(134, 240, 134);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.statusStopped {
+    background: #f0f0f0;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+}
+.listenerMeta {
+    font-family: monospace;
+    font-size: 14px;
+    color: #555;
+}
+.connectionList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.connectionCard {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 12px;
+    background: #f9f9f9;
+}
+.connectionMeta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.connectionClient {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 600;
+}
+.connectionTime {
+    font-size: 12px;
+    color: #888;
+}
+.connectionData {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-family: monospace;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.connectionNoData {
+    font-size: 12px;
+    color: #999;
+    margin: 0;
+    font-style: italic;
+}
+
 /* Responsive: stack columns on small screens */
 @media (max-width: 700px) {
     .toolLayout {

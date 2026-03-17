@@ -19,6 +19,7 @@ services:
     env_file: .env
     ports:
       - 8000:5001
+      - 7100-7109:7100-7109
     cap_add:
       - NET_RAW
   worker:

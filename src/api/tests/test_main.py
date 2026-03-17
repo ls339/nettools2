@@ -23,11 +23,13 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def clear_rate_store():
-    from src.api.app.main import _rate_store
+def clear_state():
+    from src.api.app.main import _rate_store, _listeners
     _rate_store.clear()
+    _listeners.clear()
     yield
     _rate_store.clear()
+    _listeners.clear()
 
 
 # --- GET /myip ---
@@ -475,3 +477,101 @@ def test_api_key_enforced_when_env_set():
 
         response = client.get("/myip", headers={"X-API-Key": "secret-key"})
         assert response.status_code == 200
+
+
+# --- TCP Listener ---
+
+
+@patch("src.api.app.main.threading.Thread")
+def test_start_listener_returns_id_and_status(mock_thread):
+    response = client.post("/listener/start?port=7100&timeout=60")
+    assert response.status_code == 200
+    data = response.json()
+    assert "id" in data
+    assert data["port"] == 7100
+    assert data["status"] == "listening"
+    assert "started_at" in data
+    mock_thread.return_value.start.assert_called_once()
+
+
+@patch("src.api.app.main.threading.Thread")
+def test_start_listener_rejects_port_out_of_range(mock_thread):
+    response = client.post("/listener/start?port=80&timeout=60")
+    assert response.status_code == 422
+
+    response = client.post("/listener/start?port=7200&timeout=60")
+    assert response.status_code == 422
+
+
+@patch("src.api.app.main.threading.Thread")
+def test_start_listener_rejects_invalid_timeout(mock_thread):
+    response = client.post("/listener/start?port=7100&timeout=0")
+    assert response.status_code == 422
+
+    response = client.post("/listener/start?port=7100&timeout=301")
+    assert response.status_code == 422
+
+
+@patch("src.api.app.main.threading.Thread")
+def test_start_listener_rejects_duplicate_port(mock_thread):
+    client.post("/listener/start?port=7100&timeout=60")
+    response = client.post("/listener/start?port=7100&timeout=60")
+    assert response.status_code == 409
+
+
+@patch("src.api.app.main.threading.Thread")
+def test_get_listener_returns_state(mock_thread):
+    start = client.post("/listener/start?port=7100&timeout=60")
+    listener_id = start.json()["id"]
+
+    response = client.get(f"/listener/{listener_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == listener_id
+    assert data["port"] == 7100
+    assert data["connections"] == []
+
+
+def test_get_listener_returns_404_for_unknown_id():
+    response = client.get("/listener/nonexistent-id")
+    assert response.status_code == 404
+
+
+@patch("src.api.app.main.threading.Thread")
+def test_stop_listener_returns_stopped_status(mock_thread):
+    start = client.post("/listener/start?port=7100&timeout=60")
+    listener_id = start.json()["id"]
+
+    response = client.delete(f"/listener/{listener_id}")
+    assert response.status_code == 200
+    assert response.json() == {"message": "stopped"}
+
+    state = client.get(f"/listener/{listener_id}")
+    assert state.json()["status"] == "stopped"
+
+
+def test_stop_listener_returns_404_for_unknown_id():
+    response = client.delete("/listener/nonexistent-id")
+    assert response.status_code == 404
+
+
+@patch("src.api.app.main.threading.Thread")
+def test_get_listener_shows_captured_connections(mock_thread):
+    start = client.post("/listener/start?port=7100&timeout=60")
+    listener_id = start.json()["id"]
+
+    # Inject a connection directly into the state
+    from src.api.app.main import _listeners
+    _listeners[listener_id].connections.append({
+        "connected_at": "2026-01-01T00:00:00+00:00",
+        "client_ip": "1.2.3.4",
+        "client_port": 54321,
+        "data": "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n",
+    })
+
+    response = client.get(f"/listener/{listener_id}")
+    assert response.status_code == 200
+    connections = response.json()["connections"]
+    assert len(connections) == 1
+    assert connections[0]["client_ip"] == "1.2.3.4"
+    assert "GET / HTTP/1.1" in connections[0]["data"]

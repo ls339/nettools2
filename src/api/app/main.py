@@ -7,7 +7,9 @@ import ssl
 import subprocess
 import threading
 import time
+import uuid
 from collections import defaultdict, deque
+from datetime import datetime, timezone
 
 import dns.resolver
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
@@ -287,3 +289,143 @@ def ssl_inspect(host: str, port: int = 443):
         raise HTTPException(status_code=408, detail="Connection timed out")
     except (socket.gaierror, ConnectionRefusedError, OSError):
         raise HTTPException(status_code=400, detail="Connection failed")
+
+
+# --- TCP Listener ---
+
+_LISTENER_PORT_MIN = int(os.getenv("LISTENER_PORT_MIN", "7100"))
+_LISTENER_PORT_MAX = int(os.getenv("LISTENER_PORT_MAX", "7109"))
+_LISTENER_MAX_TIMEOUT = 300  # seconds
+_LISTENER_MAX_CONCURRENT = 5
+_LISTENER_MAX_DATA_BYTES = 8192
+
+_listeners: dict[str, "_ListenerState"] = {}
+_listeners_lock = threading.Lock()
+
+
+class _ListenerState:
+    def __init__(self, listener_id: str, port: int, timeout: int):
+        self.id = listener_id
+        self.port = port
+        self.timeout = timeout
+        self.started_at = datetime.now(timezone.utc).isoformat()
+        self.status = "listening"
+        self.connections: list[dict] = []
+        self._stop = threading.Event()
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "port": self.port,
+            "timeout": self.timeout,
+            "started_at": self.started_at,
+            "status": self.status,
+            "connections": list(self.connections),
+        }
+
+
+def _run_listener(state: _ListenerState) -> None:
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        srv.bind(("0.0.0.0", state.port))
+        srv.listen(20)
+        srv.settimeout(1.0)
+        deadline = time.monotonic() + state.timeout
+        while not state._stop.is_set() and time.monotonic() < deadline:
+            try:
+                conn, addr = srv.accept()
+            except socket.timeout:
+                continue
+            try:
+                conn.settimeout(5.0)
+                chunks: list[bytes] = []
+                total = 0
+                while total < _LISTENER_MAX_DATA_BYTES:
+                    chunk = conn.recv(4096)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+                raw = b"".join(chunks)
+                with _listeners_lock:
+                    state.connections.append({
+                        "connected_at": datetime.now(timezone.utc).isoformat(),
+                        "client_ip": addr[0],
+                        "client_port": addr[1],
+                        "data": raw.decode("utf-8", errors="replace"),
+                    })
+            except Exception:
+                pass
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+    except Exception:
+        with _listeners_lock:
+            state.status = "error"
+        return
+    finally:
+        try:
+            srv.close()
+        except Exception:
+            pass
+    with _listeners_lock:
+        if state.status == "listening":
+            state.status = "expired"
+
+
+@app.post(
+    "/listener/start",
+    dependencies=[Depends(RateLimiter(max_calls=5))],
+    responses={200: {"id": "uuid", "port": 7000, "status": "listening"}},
+)
+def start_listener(port: int, timeout: int = 60):
+    if not (_LISTENER_PORT_MIN <= port <= _LISTENER_PORT_MAX):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Port must be between {_LISTENER_PORT_MIN} and {_LISTENER_PORT_MAX}",
+        )
+    if not (1 <= timeout <= _LISTENER_MAX_TIMEOUT):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Timeout must be between 1 and {_LISTENER_MAX_TIMEOUT} seconds",
+        )
+    with _listeners_lock:
+        active_count = sum(1 for s in _listeners.values() if s.status == "listening")
+        if active_count >= _LISTENER_MAX_CONCURRENT:
+            raise HTTPException(status_code=429, detail="Too many active listeners")
+        for s in _listeners.values():
+            if s.port == port and s.status == "listening":
+                raise HTTPException(status_code=409, detail=f"Port {port} already has an active listener")
+
+    listener_id = str(uuid.uuid4())
+    state = _ListenerState(listener_id, port, timeout)
+    with _listeners_lock:
+        _listeners[listener_id] = state
+
+    t = threading.Thread(target=_run_listener, args=(state,), daemon=True)
+    t.start()
+
+    return {"id": listener_id, "port": port, "status": "listening", "started_at": state.started_at}
+
+
+@app.get("/listener/{listener_id}", responses={200: {"id": "uuid", "port": 7000, "connections": []}})
+def get_listener(listener_id: str):
+    with _listeners_lock:
+        state = _listeners.get(listener_id)
+        if not state:
+            raise HTTPException(status_code=404, detail="Listener not found")
+        return state.to_dict()
+
+
+@app.delete("/listener/{listener_id}", responses={200: {"message": "stopped"}})
+def stop_listener(listener_id: str):
+    with _listeners_lock:
+        state = _listeners.get(listener_id)
+        if not state:
+            raise HTTPException(status_code=404, detail="Listener not found")
+        state._stop.set()
+        state.status = "stopped"
+    return {"message": "stopped"}

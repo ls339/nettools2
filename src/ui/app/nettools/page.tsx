@@ -7,8 +7,9 @@ import DnsLookup from './dns-lookup'
 import PingTool from './ping-tool'
 import TracerouteTool from './traceroute-tool'
 import SslInspector from './ssl-inspector'
+import TcpListener from './tcp-listener'
 
-type Tab = 'port-scanner' | 'dns' | 'ping' | 'traceroute' | 'ssl'
+type Tab = 'port-scanner' | 'dns' | 'ping' | 'traceroute' | 'ssl' | 'tcp-listener'
 
 const TAB_GROUPS = [
     {
@@ -23,6 +24,7 @@ const TAB_GROUPS = [
         tabs: [
             { id: 'ping' as Tab, label: 'Ping' },
             { id: 'traceroute' as Tab, label: 'Traceroute' },
+            { id: 'tcp-listener' as Tab, label: 'TCP Listener' },
         ],
     },
     {
@@ -66,6 +68,7 @@ export default function Page() {
                 {activeTab === 'ping' && <PingTool />}
                 {activeTab === 'traceroute' && <TracerouteTool />}
                 {activeTab === 'ssl' && <SslInspector />}
+                {activeTab === 'tcp-listener' && <TcpListener />}
             </div>
         </div>
     )

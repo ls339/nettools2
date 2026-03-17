@@ -220,3 +220,122 @@ test('ssl inspector displays cert info', async ({ page }) => {
     await expect(page.getByText("Let's Encrypt")).toBeVisible()
     await expect(page.getByText('TLSv1.3')).toBeVisible()
 })
+
+// Flow 13: TCP Listener — start listener and see status
+test('tcp listener starts and shows listening status with connection hint', async ({ page }) => {
+    await page.route('/api/listener/start*', route =>
+        route.fulfill({
+            json: {
+                id: 'listener-abc',
+                port: 7000,
+                timeout: 120,
+                started_at: new Date().toISOString(),
+                status: 'listening',
+            },
+        })
+    )
+    await page.route('/api/listener/listener-abc', route =>
+        route.fulfill({
+            json: {
+                id: 'listener-abc',
+                port: 7000,
+                timeout: 120,
+                started_at: new Date().toISOString(),
+                status: 'listening',
+                connections: [],
+            },
+        })
+    )
+
+    await page.goto('/nettools')
+    await page.getByRole('button', { name: 'TCP Listener' }).click()
+    await page.getByRole('button', { name: 'Start Listener' }).click()
+
+    await expect(page.getByText('Listening')).toBeVisible()
+    await expect(page.getByText('localhost:7100')).toBeVisible()
+    await expect(page.getByText('No connections yet.')).toBeVisible()
+})
+
+// Flow 14: TCP Listener — displays captured connections
+test('tcp listener displays captured connections', async ({ page }) => {
+    await page.route('/api/listener/start*', route =>
+        route.fulfill({
+            json: {
+                id: 'listener-xyz',
+                port: 7101,
+                timeout: 60,
+                started_at: new Date().toISOString(),
+                status: 'listening',
+            },
+        })
+    )
+    await page.route('/api/listener/listener-xyz', route =>
+        route.fulfill({
+            json: {
+                id: 'listener-xyz',
+                port: 7101,
+                timeout: 60,
+                started_at: new Date().toISOString(),
+                status: 'listening',
+                connections: [
+                    {
+                        connected_at: new Date().toISOString(),
+                        client_ip: '192.168.1.50',
+                        client_port: 54321,
+                        data: 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n',
+                    },
+                ],
+            },
+        })
+    )
+
+    await page.goto('/nettools')
+    await page.getByRole('button', { name: 'TCP Listener' }).click()
+    await page.getByPlaceholder('Port (7100–7109)').fill('7101')
+    await page.getByRole('button', { name: 'Start Listener' }).click()
+
+    await expect(page.getByText('192.168.1.50:54321')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('GET / HTTP/1.1')).toBeVisible()
+})
+
+// Flow 15: TCP Listener — stop listener updates status
+test('tcp listener stop button updates status to stopped', async ({ page }) => {
+    await page.route('/api/listener/start*', route =>
+        route.fulfill({
+            json: {
+                id: 'listener-stop',
+                port: 7102,
+                timeout: 60,
+                started_at: new Date().toISOString(),
+                status: 'listening',
+            },
+        })
+    )
+    await page.route('/api/listener/listener-stop', route => {
+        if (route.request().method() === 'DELETE') {
+            route.fulfill({ json: { message: 'stopped' } })
+        } else {
+            route.fulfill({
+                json: {
+                    id: 'listener-stop',
+                    port: 7102,
+                    timeout: 60,
+                    started_at: new Date().toISOString(),
+                    status: 'stopped',
+                    connections: [],
+                },
+            })
+        }
+    })
+
+    await page.goto('/nettools')
+    await page.getByRole('button', { name: 'TCP Listener' }).click()
+    await page.getByPlaceholder('Port (7100–7109)').fill('7102')
+    await page.getByRole('button', { name: 'Start Listener' }).click()
+
+    await expect(page.getByRole('button', { name: 'Stop Listener' })).toBeVisible()
+    await page.getByRole('button', { name: 'Stop Listener' }).click()
+
+    await expect(page.getByText('Stopped')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start Listener' })).toBeVisible()
+})
