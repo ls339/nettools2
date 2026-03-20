@@ -2,6 +2,10 @@
 
 A microservices-based network tools application with a tabbed UI for common network diagnostics.
 
+## Screenshot
+
+![Nettools2 UI](docs/screenshot.png)
+
 ## Architecture
 
 ```
