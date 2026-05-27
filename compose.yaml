@@ -30,6 +30,12 @@ services:
     build:
       context: ./src/ui
       dockerfile: ./dockerfile
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:-default-dev-secret-change-in-prod}
+      AUTH_USERNAME: ${AUTH_USERNAME:-admin}
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: http://localhost:8080
     depends_on:
       - api
   nginx:
