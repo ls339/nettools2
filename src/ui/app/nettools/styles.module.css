@@ -12,10 +12,30 @@
     font-weight: 600;
     font-size: 15px;
 }
+.navRight {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
 .navIp {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+.navUser {
+    font-size: 13px;
+    color: #555;
+}
+.signOutButton {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+}
+.signOutButton:hover {
+    background: #f0f0f0;
 }
 .navIpLabel {
     font-size: 12px;
